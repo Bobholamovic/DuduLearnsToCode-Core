@@ -1,9 +1,9 @@
 # Initialize all
 
-import core.misc
-import core.data
-import core.config
+from .misc import *
+from .data import *
+from .config import *
 
-import core.builders
-import core.factories
-import core.trainer
+from .builders import *
+from .factories import *
+from .trainer import *
