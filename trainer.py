@@ -167,10 +167,10 @@ class Trainer(metaclass=ABCMeta):
                 self.start_epoch = ckp_epoch
             elif not self.ctx['anew']:
                 self.start_epoch = ckp_epoch+1
-            if self.ctx['load_optim']:
-                # XXX: Note that weight decay might be modified here.
-                self.optimizer.load_state_dict(checkpoint['optimizer'])
-                self.logger.warn("Weight decay might have been modified.")
+                if self.ctx['load_optim']:
+                    # XXX: Note that weight decay might be modified here.
+                    self.optimizer.load_state_dict(checkpoint['optimizer'])
+                    self.logger.warn("Weight decay might have been modified.")
 
         state_dict.update(update_dict)
         self.model.load_state_dict(state_dict)
