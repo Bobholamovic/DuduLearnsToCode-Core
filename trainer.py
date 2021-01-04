@@ -1,7 +1,5 @@
 import shutil
 import os
-from types import MappingProxyType
-from copy import deepcopy
 from abc import ABCMeta, abstractmethod
 
 import torch
@@ -14,10 +12,7 @@ from .factories import (model_factory, optim_factory, critn_factory, data_factor
 class Trainer(metaclass=ABCMeta):
     def __init__(self, model, dataset, criterion, optimizer, settings):
         super().__init__()
-        # Make a copy of settings in case of unexpected changes
-        context = deepcopy(settings)
-        # self.ctx is a proxy so that context will be read-only outside __init__
-        self.ctx = MappingProxyType(context)
+        self.ctx = context
         self.mode = ('train', 'eval').index(context['cmd'])
         self.debug = context['debug_on']
         self.log = not context['log_off']
@@ -25,8 +20,8 @@ class Trainer(metaclass=ABCMeta):
         self.checkpoint = context['resume']
         self.load_checkpoint = (len(self.checkpoint)>0)
         self.num_epochs = context['num_epochs']
-        self.lr = float(context['lr'])
-        self.track_intvl = int(context['track_intvl'])
+        self.lr = context['lr']
+        self.track_intvl = context['track_intvl']
         self.device = torch.device(context['device'])
 
         self.gpc = OutPathGetter(

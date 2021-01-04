@@ -1,8 +1,21 @@
 import argparse
 import os.path as osp
-from collections import ChainMap
+from types import MappingProxyType
+from collections.abc import Mapping
 
 import yaml
+
+
+def _chain_maps(*maps):
+    chained = dict()
+    keys = set().union(*maps)
+    for key in keys:
+        vals = [m[key] for m in maps if key in m]
+        if isinstance(vals[0], Mapping):
+            chained[key] = _chain_maps(*vals)
+        else:
+            chained[key] = vals[0]
+    return chained
 
 
 def read_config(config_path):
@@ -13,21 +26,24 @@ def read_config(config_path):
 
 def parse_configs(cfg_path, inherit=True):
     # Read and parse config files
-    cfg_dir = osp.dirname(cfg_path)
-    cfg_name = osp.basename(cfg_path)
-    cfg_name, ext = osp.splitext(cfg_name)
-    parts = cfg_name.split('_')
-    cfg_path = osp.join(cfg_dir, parts[0])
-    cfgs = []
-    for part in parts[1:]:
-        cfg_path = '_'.join([cfg_path, part])
-        if osp.exists(cfg_path+ext):
-            cfgs.append(read_config(cfg_path+ext))
-    cfgs.reverse()
-    if len(parts)>=2:
-        return ChainMap(*cfgs, dict(tag=parts[1], suffix='_'.join(parts[2:])))
+    if inherit:
+        cfg_dir = osp.dirname(cfg_path)
+        cfg_name = osp.basename(cfg_path)
+        cfg_name, ext = osp.splitext(cfg_name)
+        parts = cfg_name.split('_')
+        cfg_path = osp.join(cfg_dir, parts[0])
+        cfgs = []
+        for part in parts[1:]:
+            cfg_path = '_'.join([cfg_path, part])
+            if osp.exists(cfg_path+ext):
+                cfgs.append(read_config(cfg_path+ext))
+        cfgs.reverse()
+        if len(parts)>=2:
+            return _chain_maps(*cfgs, dict(tag=parts[1], suffix='_'.join(parts[2:])))
+        else:
+            return _chain_maps(*cfgs)
     else:
-        return ChainMap(*cfgs)
+        return read_config(cfg_path)
 
 
 def parse_args(parser_configurator=None):
@@ -89,26 +105,26 @@ def parse_args(parser_configurator=None):
         cfg = parse_configs(args.exp_config, not args.inherit_off)
         group_config = parser.add_argument_group('from_file')
         
-        def _cfg2arg(cfg, parser, prefix=''):
+        def _cfg2args(cfg, parser, prefix=''):
             for k, v in cfg.items():
                 if isinstance(v, (list, tuple)):
-                    # Only apply to homogeneous lists and tuples
+                    # Only apply to homogeneous lists or tuples
                     parser.add_argument('--'+prefix+k, type=type(v[0]), nargs='*', default=v)
                 elif isinstance(v, dict):
                     # Recursively parse a dict
-                    _cfg2arg(v, parser, prefix+k+'.')
+                    _cfg2args(v, parser, prefix+k+'.')
                 elif isinstance(v, bool):
                     parser.add_argument('--'+prefix+k, action='store_true', default=v)
                 else:
                     parser.add_argument('--'+prefix+k, type=type(v), default=v)
-        _cfg2arg(cfg, group_config, '')
-        args = parser.parse_args()
+            return parser.parse_args()
+        args = _cfg2args(cfg, group_config, '')
     elif args.exp_config != '':
         raise FileNotFoundError
     elif len(unparsed)!=0:
         raise RuntimeError("Unrecognized arguments")
 
-    def _arg2cfg(cfg, args):
+    def _args2cfg(cfg, args):
         args = vars(args)
         for k, v in args.items():
             pos = k.find('.')
@@ -125,4 +141,4 @@ def parse_args(parser_configurator=None):
                 cfg[k] = v
         return cfg
 
-    return _arg2cfg(dict(), args)
+    return MappingProxyType(_args2cfg(dict(), args)) # Make it readonly
