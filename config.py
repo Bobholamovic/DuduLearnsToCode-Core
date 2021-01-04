@@ -1,3 +1,4 @@
+import sys
 import argparse
 import os.path as osp
 from collections.abc import Mapping
@@ -46,85 +47,81 @@ def parse_configs(cfg_path, inherit=True):
 
 
 def parse_args(parser_configurator=None):
-    # Parse necessary arguments
+    # Check if a config file is specified
+    cfg_parser = argparse.ArgumentParser(add_help=False)
+    cfg_parser.add_argument('--exp_config', type=str, default='')
+    cfg_parser.add_argument('--inherit_off', action='store_true')
+    cfg_args = cfg_parser.parse_known_args()[0]
+    cfg_path = cfg_args.exp_config
+    inherit_on = not cfg_args.inherit_off
+
+    # Main parser
+    parser = argparse.ArgumentParser(conflict_handler='resolve', parents=[cfg_parser])
     # Global settings
-    parser = argparse.ArgumentParser(conflict_handler='resolve')
     parser.add_argument('cmd', choices=['train', 'eval'])
 
     # Data
-    group_data = parser.add_argument_group('data')
-    group_data.add_argument('--dataset', type=str)
-    group_data.add_argument('--num_workers', type=int, default=4)
-    group_data.add_argument('--repeats', type=int, default=1)
-    group_data.add_argument('--subset', type=str, default='val')
+    parser.add_argument('--dataset', type=str)
+    parser.add_argument('--num_workers', type=int, default=4)
+    parser.add_argument('--repeats', type=int, default=1)
+    parser.add_argument('--subset', type=str, default='val')
 
     # Optimizer
-    group_optim = parser.add_argument_group('optimizer')
-    group_optim.add_argument('--optimizer', type=str, default='Adam')
-    group_optim.add_argument('--lr', type=float, default=1e-4)
-    group_optim.add_argument('--weight_decay', type=float, default=1e-4)
-    group_optim.add_argument('--load_optim', action='store_true')
-    group_optim.add_argument('--save_optim', action='store_true')
+    parser.add_argument('--optimizer', type=str, default='Adam')
+    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--weight_decay', type=float, default=1e-4)
+    parser.add_argument('--load_optim', action='store_true')
+    parser.add_argument('--save_optim', action='store_true')
 
     # Training related
-    group_train = parser.add_argument_group('training related')
-    group_train.add_argument('--batch_size', type=int, default=8)
-    group_train.add_argument('--num_epochs', type=int)
-    group_train.add_argument('--resume', type=str, default='')
-    group_train.add_argument('--anew', action='store_true',
-                        help="clear history and start from epoch 0 with weights updated")
-    group_train.add_argument('--device', type=str, default='cpu')
+    parser.add_argument('--batch_size', type=int, default=8)
+    parser.add_argument('--num_epochs', type=int)
+    parser.add_argument('--resume', type=str, default='')
+    parser.add_argument('--anew', action='store_true',
+                        help="clear history and start from epoch 0 with model weights updated")
+    parser.add_argument('--device', type=str, default='cpu')
 
     # Experiment
-    group_exp = parser.add_argument_group('experiment related')
-    group_exp.add_argument('--exp_dir', default='../exp/')
-    group_exp.add_argument('--tag', type=str, default='')
-    group_exp.add_argument('--suffix', type=str, default='')
-    group_exp.add_argument('--exp_config', type=str, default='')
-    group_exp.add_argument('--debug_on', action='store_true')
-    group_exp.add_argument('--inherit_off', action='store_true')
-    group_exp.add_argument('--log_off', action='store_true')
-    group_exp.add_argument('--track_intvl', type=int, default=1)
+    parser.add_argument('--exp_dir', default='../exp/')
+    parser.add_argument('--tag', type=str, default='')
+    parser.add_argument('--suffix', type=str, default='')
+    parser.add_argument('--debug_on', action='store_true')
+    parser.add_argument('--log_off', action='store_true')
+    parser.add_argument('--track_intvl', type=int, default=1)
 
     # Criterion
-    group_critn = parser.add_argument_group('criterion related')
-    group_critn.add_argument('--criterion', type=str, default='NLL')
-    group_critn.add_argument('--weights', type=float, nargs='+', default=None)
+    parser.add_argument('--criterion', type=str, default='NLL')
+    parser.add_argument('--weights', type=float, nargs='+', default=None)
 
     # Model
-    group_model = parser.add_argument_group('model')
-    group_model.add_argument('--model', type=str)
+    parser.add_argument('--model', type=str)
 
     if parser_configurator is not None:
         parser = parser_configurator(parser)
-
-    args, unparsed = parser.parse_known_args()
     
-    if osp.exists(args.exp_config):
-        cfg = parse_configs(args.exp_config, not args.inherit_off)
-        group_config = parser.add_argument_group('from_file')
+    if osp.exists(cfg_path):
+        cfg = parse_configs(cfg_path, inherit_on)
         
-        def _cfg2args(cfg, parser, group=None, prefix=''):
-            if group is None:
-                group = parser
+        def _cfg2args(cfg, parser, prefix=''):
             for k, v in cfg.items():
+                opt = prefix+k
                 if isinstance(v, (list, tuple)):
                     # Only apply to homogeneous lists or tuples
-                    group.add_argument('--'+prefix+k, type=type(v[0]), nargs='*', default=v)
+                    parser.add_argument('--'+opt, type=type(v[0]), nargs='*', default=v)
                 elif isinstance(v, dict):
                     # Recursively parse a dict
-                    _cfg2args(v, parser, group, prefix+k+'.')
+                    _cfg2args(v, parser, opt+'.')
                 elif isinstance(v, bool):
-                    group.add_argument('--'+prefix+k, action='store_true', default=v)
+                    parser.add_argument('--'+opt, action='store_true', default=v)
                 else:
-                    group.add_argument('--'+prefix+k, type=type(v), default=v)
+                    parser.add_argument('--'+opt, type=type(v), default=v)
             return parser.parse_args()
 
-        args = _cfg2args(cfg, parser, group_config, '')
-    elif args.exp_config != '':
+        args = _cfg2args(cfg, parser, '')
+    elif cfg_path != '':
         raise FileNotFoundError
-    elif len(unparsed)!=0:
-        raise RuntimeError("Unrecognized arguments")
+    else:
+        args = parser.parse_args()
 
     def _args2cfg(cfg, args):
         args = vars(args)
