@@ -105,20 +105,23 @@ def parse_args(parser_configurator=None):
         cfg = parse_configs(args.exp_config, not args.inherit_off)
         group_config = parser.add_argument_group('from_file')
         
-        def _cfg2args(cfg, parser, prefix=''):
+        def _cfg2args(cfg, parser, group=None, prefix=''):
+            if group is None:
+                group = parser
             for k, v in cfg.items():
                 if isinstance(v, (list, tuple)):
                     # Only apply to homogeneous lists or tuples
-                    parser.add_argument('--'+prefix+k, type=type(v[0]), nargs='*', default=v)
+                    group.add_argument('--'+prefix+k, type=type(v[0]), nargs='*', default=v)
                 elif isinstance(v, dict):
                     # Recursively parse a dict
-                    _cfg2args(v, parser, prefix+k+'.')
+                    _cfg2args(v, parser, group, prefix+k+'.')
                 elif isinstance(v, bool):
-                    parser.add_argument('--'+prefix+k, action='store_true', default=v)
+                    group.add_argument('--'+prefix+k, action='store_true', default=v)
                 else:
-                    parser.add_argument('--'+prefix+k, type=type(v), default=v)
+                    group.add_argument('--'+prefix+k, type=type(v), default=v)
             return parser.parse_args()
-        args = _cfg2args(cfg, group_config, '')
+            
+        args = _cfg2args(cfg, parser, group_config, '')
     elif args.exp_config != '':
         raise FileNotFoundError
     elif len(unparsed)!=0:

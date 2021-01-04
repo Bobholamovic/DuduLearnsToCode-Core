@@ -12,44 +12,44 @@ from .factories import (model_factory, optim_factory, critn_factory, data_factor
 class Trainer(metaclass=ABCMeta):
     def __init__(self, model, dataset, criterion, optimizer, settings):
         super().__init__()
-        self.ctx = context
-        self.mode = ('train', 'eval').index(context['cmd'])
-        self.debug = context['debug_on']
-        self.log = not context['log_off']
-        self.batch_size = context['batch_size']
-        self.checkpoint = context['resume']
+        self.ctx = settings # Context
+        self.mode = ('train', 'eval').index(settings['cmd'])
+        self.debug = settings['debug_on']
+        self.log = not settings['log_off']
+        self.batch_size = settings['batch_size']
+        self.checkpoint = settings['resume']
         self.load_checkpoint = (len(self.checkpoint)>0)
-        self.num_epochs = context['num_epochs']
-        self.lr = context['lr']
-        self.track_intvl = context['track_intvl']
-        self.device = torch.device(context['device'])
+        self.num_epochs = settings['num_epochs']
+        self.lr = settings['lr']
+        self.track_intvl = settings['track_intvl']
+        self.device = torch.device(settings['device'])
 
         self.gpc = OutPathGetter(
-            root=os.path.join(context['exp_dir'], context['tag']), 
-            suffix=context['suffix']
+            root=os.path.join(settings['exp_dir'], settings['tag']), 
+            suffix=settings['suffix']
         )   # Global Path Controller
         
         self.logger = Logger(
             scrn=True,
             log_dir=self.gpc.get_dir('log') if self.log else '',
-            phase=context['cmd']
+            phase=settings['cmd']
         )
         self.path = self.gpc.get_path
 
-        for k, v in sorted(context.items()):
+        for k, v in sorted(settings.items()):
             self.logger.show("{}: {}".format(k,v))
 
-        self.model = model_factory(model, context)
+        self.model = model_factory(model, settings)
         self.model.to(self.device)
-        self.criterion = critn_factory(criterion, context)
+        self.criterion = critn_factory(criterion, settings)
         self.criterion.to(self.device)
 
         if self.is_training:
-            self.train_loader = data_factory(dataset, 'train', context)
-            self.eval_loader = data_factory(dataset, 'eval', context)
-            self.optimizer = optim_factory(optimizer, self.model, context)
+            self.train_loader = data_factory(dataset, 'train', settings)
+            self.eval_loader = data_factory(dataset, 'eval', settings)
+            self.optimizer = optim_factory(optimizer, self.model, settings)
         else:
-            self.eval_loader = data_factory(dataset, 'eval', context)
+            self.eval_loader = data_factory(dataset, 'eval', settings)
         
         self.start_epoch = 0
         self._init_acc_epoch = (0.0, -1)
