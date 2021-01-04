@@ -1,6 +1,5 @@
 import argparse
 import os.path as osp
-from types import MappingProxyType
 from collections.abc import Mapping
 
 import yaml
@@ -120,7 +119,7 @@ def parse_args(parser_configurator=None):
                 else:
                     group.add_argument('--'+prefix+k, type=type(v), default=v)
             return parser.parse_args()
-            
+
         args = _cfg2args(cfg, parser, group_config, '')
     elif args.exp_config != '':
         raise FileNotFoundError
@@ -144,4 +143,4 @@ def parse_args(parser_configurator=None):
                 cfg[k] = v
         return cfg
 
-    return MappingProxyType(_args2cfg(dict(), args)) # Make it readonly
+    return _args2cfg(dict(), args)
