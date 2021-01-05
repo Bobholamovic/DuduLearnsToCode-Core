@@ -15,6 +15,7 @@ class _LessThanFilter(logging.Filter):
     def __init__(self, max_level, name=''):
         super().__init__(name=name)
         self.max_level = getattr(logging, max_level.upper()) if isinstance(max_level, str) else int(max_level)
+        
     def filter(self, record):
         return record.levelno < self.max_level
 
@@ -45,7 +46,7 @@ class Logger:
                     "{}-{:-4d}-{:02d}-{:02d}-{:02d}-{:02d}-{:02d}.log".format(
                         phase, *localtime()[:6]
                       ))
-            self.show_nl("Log into {}\n\n".format(self.log_path))
+            self.show_nl("Log into {}\n".format(self.log_path))
             self._file_handler = logging.FileHandler(filename=self.log_path)
             self._file_handler.setLevel(logging.DEBUG)
             self._file_handler.setFormatter(logging.Formatter(fmt=FORMAT_LONG))
