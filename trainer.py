@@ -185,14 +185,14 @@ class Trainer(metaclass=ABCMeta):
             'optimizer': optim_state, 
             'max_acc': max_acc
         } 
-        # Save history
-        # epoch+1 instead of epoch is contained in the checkpoint name so that it will be easy for 
-        # one to recognize "the next start_epoch". 
-        history_path = self.path(
-            'weight', constants.CKP_COUNTED.format(e=epoch+1), 
-            suffix=True
-        )
-        if epoch % self.track_intvl == 0:
+        if (epoch+1) % self.track_intvl == 0:
+            # Save history
+            # epoch+1 instead of epoch is contained in the checkpoint name so that it will be easy for 
+            # one to recognize "the next start_epoch". 
+            history_path = self.path(
+                'weight', constants.CKP_COUNTED.format(e=epoch+1), 
+                suffix=True
+            )
             torch.save(state, history_path)
         # Save latest
         latest_path = self.path(
