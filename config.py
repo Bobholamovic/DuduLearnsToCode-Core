@@ -90,8 +90,7 @@ def parse_args(parser_configurator=None):
     parser.add_argument('--track_intvl', type=int, default=1)
 
     # Criterion
-    parser.add_argument('--criterion', type=str, default='NLL')
-    parser.add_argument('--weights', type=float, nargs='+', default=None)
+    parser.add_argument('--criterion', type=str)
 
     # Model
     parser.add_argument('--model', type=str)

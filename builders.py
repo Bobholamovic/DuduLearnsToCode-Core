@@ -41,9 +41,9 @@ def build_MSE_critn(C):
 
 @CRITNS.register_func('CE_critn')
 def build_CE_critn(C):
-    return nn.CrossEntropyLoss(torch.Tensor(C['weights']))
+    return nn.CrossEntropyLoss()
 
 
 @CRITNS.register_func('NLL_critn')
 def build_NLL_critn(C):
-    return nn.NLLLoss(torch.Tensor(C['weights']))
+    return nn.NLLLoss()
