@@ -225,7 +225,7 @@ class TrainerSwitcher:
         self._trainer_list.insert(0, (predicate, trainer))
 
     def add_default(self, trainer):
-        self._trainer_list.append((lambda: True, trainer))
+        self._trainer_list.append((lambda _: True, trainer))
 
 
 R.register('Trainer_switcher', TrainerSwitcher())
