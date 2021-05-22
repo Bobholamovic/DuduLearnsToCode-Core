@@ -157,15 +157,16 @@ class Trainer(metaclass=ABCMeta):
             ckp_epoch = -1
         else:
             ckp_epoch = checkpoint.get('epoch', -1)
-            self._init_acc_epoch = checkpoint.get('max_acc', (0.0, ckp_epoch))
             if not self.is_training:
                 self.start_epoch = ckp_epoch
+                self._init_acc_epoch = checkpoint.get('max_acc', (0.0, ckp_epoch))
             elif not self.ctx['anew']:
                 self.start_epoch = ckp_epoch+1
                 if self.ctx['load_optim']:
                     # XXX: Note that weight decay might be modified here.
                     self.optimizer.load_state_dict(checkpoint['optimizer'])
                     self.logger.warn("Weight decay might have been modified.")
+                self._init_acc_epoch = checkpoint.get('max_acc', (0.0, ckp_epoch))
 
         state_dict.update(update_dict)
         self.model.load_state_dict(state_dict)
