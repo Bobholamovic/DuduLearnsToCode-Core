@@ -143,20 +143,20 @@ def single_model_factory(model_name, C):
     if builder_name in MODELS:
         return MODELS[builder_name](C)
     else:
-        raise NotImplementedError("{} is not a supported architecture.".format(model_name))
+        raise RuntimeError("{} is not a supported architecture.".format(model_name))
 
 
 def single_optim_factory(optim_name, params, C):
     builder_name = '_'.join([optim_name, 'optim'])
     if builder_name not in OPTIMS:
-        raise NotImplementedError("{} is not a supported optimizer type.".format(optim_name))
+        raise RuntimeError("{} is not a supported optimizer type.".format(optim_name))
     return OPTIMS[builder_name](params, C)
         
 
 def single_critn_factory(critn_name, C):
     builder_name = '_'.join([critn_name, 'critn'])
     if builder_name not in CRITNS:
-        raise NotImplementedError("{} is not a supported criterion type.".format(critn_name))
+        raise RuntimeError("{} is not a supported criterion type.".format(critn_name))
     return CRITNS[builder_name](C)
         
 
@@ -171,7 +171,7 @@ def single_data_factory(dataset_name, phase, C):
     if builder_name in DATA:
         return DATA[builder_name](C)
     else:
-        raise NotImplementedError("{} is not a supported dataset.".format(dataset_name))
+        raise RuntimeError("{} is not a supported dataset.".format(dataset_name))
 
 
 def _parse_input_names(name_str):

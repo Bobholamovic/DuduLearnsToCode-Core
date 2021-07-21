@@ -222,7 +222,7 @@ class _Tree:
     def get_node(self, tar, mode='name'):
         r"""This is different from a travasal in that this search allows early stop."""
         if mode not in ('name', 'path', 'val'):
-            raise NotImplementedError("Invalid mode")
+            raise ValueError("Invalid mode")
         if mode == 'path':
             nodes = self.parse_path(tar)
             root = self.root
