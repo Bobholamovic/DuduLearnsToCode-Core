@@ -1,9 +1,8 @@
 # from functools import wraps
 from inspect import isfunction, isgeneratorfunction, getmembers
 from collections.abc import Sequence
-from abc import ABC, ABCMeta
+from abc import ABC
 from itertools import chain
-from importlib import import_module
 
 import torch
 import torch.nn as nn
@@ -40,8 +39,9 @@ def _generator_deco(func_name):
 # Duck typing
 class Duck(Sequence, ABC):
     __ducktype__ = object
+    __ava__ = ()
     def __init__(self, *args):
-        if any(not isinstance(arg, self.__ducktype__) for arg in args):
+        if not all(map(self._check, args)):
             raise TypeError("Please check the input type.")
         self._seq = tuple(args)
 
@@ -54,27 +54,32 @@ class Duck(Sequence, ABC):
     def __repr__(self):
         return repr(self._seq)
 
+    @classmethod
+    def _check(cls, obj):
+        for attr in cls.__ava__:
+            try:
+                getattr(obj, attr)
+            except AttributeError:
+                return False
+        return True
 
-class DuckMeta(ABCMeta):
-    def __new__(cls, name, bases, attrs):
-        if len(bases) > 1:
-            raise NotImplementedError("Multiple inheritance is not yet supported.")
-        members = dict(getmembers(bases[0]))  # Trade space for time
 
-        for k in attrs['__ava__']:
-            if k in members:
-                v = members[k]
-                if isgeneratorfunction(v):
-                    attrs.setdefault(k, _generator_deco(k))
-                elif isfunction(v):
-                    attrs.setdefault(k, _func_deco(k))
-                else:
-                    attrs.setdefault(k, _AttrDesc(k))
-        attrs['__ducktype__'] = bases[0]
-        return super().__new__(cls, name, (Duck,), attrs)
+def duck_it(cls):
+    members = dict(getmembers(cls.__ducktype__))  # Trade space for time
+    for k in cls.__ava__:
+        if k in members:
+            v = members[k]
+            if isgeneratorfunction(v):
+                setattr(cls, k, _generator_deco(k))
+            elif isfunction(v):
+                setattr(cls, k, _func_deco(k))
+            else:
+                setattr(cls, k, _AttrDesc(k))
+    return cls
 
 
 class DuckModel(nn.Module):
+    __ducktype__ = nn.Module
     __ava__ = ('state_dict', 'load_state_dict', 'forward', '__call__', 'train', 'eval', 'to', 'training')
     def __init__(self, *models):
         super().__init__()
@@ -101,7 +106,9 @@ class DuckModel(nn.Module):
 Duck.register(DuckModel)
 
 
-class DuckOptimizer(torch.optim.Optimizer, metaclass=DuckMeta):
+@duck_it
+class DuckOptimizer(Duck):
+    __ducktype__ = torch.optim.Optimizer
     __ava__ = ('param_groups', 'state_dict', 'load_state_dict', 'zero_grad', 'step')
     # An instance attribute can not be automatically handled by metaclass
     @property
@@ -114,22 +121,18 @@ class DuckOptimizer(torch.optim.Optimizer, metaclass=DuckMeta):
             optim.load_state_dict(state_dict)
 
 
-class DuckCriterion(nn.Module, metaclass=DuckMeta):
+@duck_it
+class DuckCriterion(Duck):
+    __ducktype__ = nn.Module
     __ava__ = ('forward', '__call__', 'train', 'eval', 'to')
     pass
 
 
-class DuckDataLoader(data.DataLoader, metaclass=DuckMeta):
+@duck_it
+class DuckDataLoader(Duck):
+    __ducktype__ = data.DataLoader
     __ava__ = ()
     pass
-
-
-def _import_module(pkg: str, mod: str, rel=False):
-    if not rel:
-        # Use absolute import
-        return import_module('.'.join([pkg, mod]), package=None)
-    else:
-        return import_module('.'+mod, package=pkg)
 
 
 def single_model_factory(model_name, C):
@@ -137,6 +140,9 @@ def single_model_factory(model_name, C):
     if builder_name in MODELS:
         return MODELS[builder_name](C)
     builder_name = '_'.join([model_name, C['dataset'], 'model'])
+    if builder_name in MODELS:
+        return MODELS[builder_name](C)
+    builder_name = '_'.join([model_name, C['model'], 'model'])
     if builder_name in MODELS:
         return MODELS[builder_name](C)
     builder_name = '_'.join([model_name, 'model'])
@@ -165,6 +171,9 @@ def single_data_factory(dataset_name, phase, C):
     if builder_name in DATA:
         return DATA[builder_name](C)
     builder_name = '_'.join([dataset_name, C['model'], phase, 'dataset'])
+    if builder_name in DATA:
+        return DATA[builder_name](C)
+    builder_name = '_'.join([dataset_name, C['dataset'], phase, 'dataset'])
     if builder_name in DATA:
         return DATA[builder_name](C)
     builder_name = '_'.join([dataset_name, phase, 'dataset'])
