@@ -312,7 +312,7 @@ class OutPathGetter:
     def update_vfs(self, verbose=False):
         self._dir_tree.perform(lambda x: self.make_dir(x.path))
         if verbose:
-            _logger.show("\nFolder structure:")
+            _logger.show("\nDirectory structure:")
             _logger.show(self._dir_tree)
 
     @staticmethod
@@ -340,11 +340,11 @@ class OutPathGetter:
             return self.get_dir(key)
         if not self.check_path(file):
             raise ValueError("{} is not a valid path.".format(file))
-        folder = self._keys[key]
+        dir_ = self._keys[key]
         if suffix:
-            path = osp.join(folder, self._add_suffix(file, underline=underline))
+            path = osp.join(dir_, self._add_suffix(file, underline=underline))
         else:
-            path = osp.join(folder, file)
+            path = osp.join(dir_, file)
 
         if auto_make:
             base_dir = osp.dirname(path)
