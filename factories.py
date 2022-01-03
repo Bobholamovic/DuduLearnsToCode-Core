@@ -1,4 +1,3 @@
-# from functools import wraps
 from inspect import isfunction, isgeneratorfunction, getmembers
 from collections.abc import Sequence
 from abc import ABC
@@ -40,6 +39,7 @@ def _generator_deco(func_name):
 class Duck(Sequence, ABC):
     __ducktype__ = object
     __ava__ = ()
+
     def __init__(self, *args):
         if not all(map(self._check, args)):
             raise TypeError("Please check the input type.")
@@ -81,6 +81,7 @@ def duck_it(cls):
 class DuckModel(nn.Module):
     __ducktype__ = nn.Module
     __ava__ = ('state_dict', 'load_state_dict', 'forward', '__call__', 'train', 'eval', 'to', 'training')
+
     def __init__(self, *models):
         super().__init__()
         # XXX: The state_dict will be a little larger in size,
@@ -110,6 +111,7 @@ Duck.register(DuckModel)
 class DuckOptimizer(Duck):
     __ducktype__ = torch.optim.Optimizer
     __ava__ = ('param_groups', 'state_dict', 'load_state_dict', 'zero_grad', 'step')
+    
     # An instance attribute can not be automatically handled by metaclass
     @property
     def param_groups(self):
@@ -198,25 +200,13 @@ def model_factory(model_names, C):
 def optim_factory(optim_names, models, C):
     name_list = _parse_input_names(optim_names)
     num_models = len(models) if isinstance(models, DuckModel) else 1
-    if len(name_list) != num_models:
-        raise ValueError("The number of optimizers does not match the number of models.")
-    
     if num_models > 1:
-        optims = []
+        optimizers = []
         for name, model in zip(name_list, models):
-            param_groups = [{'params': module.parameters(), 'name': module_name} for module_name, module in model.named_children()]
-            if next(model.parameters(recurse=False), None) is not None:
-                param_groups.append({'params': model.parameters(recurse=False), 'name': '_direct'})
-            optims.append(single_optim_factory(name, param_groups, C))
-        return DuckOptimizer(*optims)
+            optimizers.append(single_optim_factory(name, model.parameters(), C))
+        return DuckOptimizer(*optimizers)
     else:
-        return single_optim_factory(
-            optim_names, 
-            [{'params': module.parameters(), 'name': module_name} for module_name, module in models.named_children()] + 
-            ([{'params': models.parameters(recurse=False), 'name': '_direct'}] 
-            if next(models.parameters(recurse=False), None) is not None else []), 
-            C
-        )
+        return single_optim_factory(optim_names, models.parameters(), C)
 
 
 def critn_factory(critn_names, C):
