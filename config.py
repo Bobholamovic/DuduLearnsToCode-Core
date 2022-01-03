@@ -114,9 +114,10 @@ def parse_args(parser_configurator=None):
                     parser.add_argument('--'+opt, action='store_true', default=v)
                 else:
                     parser.add_argument('--'+opt, type=type(v), default=v)
-            return parser.parse_args()
+            return parser
 
-        args = _cfg2args(cfg, parser, '')
+        parser = _cfg2args(cfg, parser, '')
+        args = parser.parse_args()
     elif cfg_path != '':
         raise FileNotFoundError
     else:
